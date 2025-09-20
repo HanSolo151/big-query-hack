@@ -594,8 +594,6 @@ class FeedbackIntegrationAgent:
             print(f"✗ Failed to get learning insights: {e}")
             return {"error": str(e)}
     
-<<<<<<< HEAD
-=======
     def process_from_multimodal_agent(self, 
                                     multimodal_data: Dict[str, Any],
                                     session_id: str,
@@ -725,7 +723,6 @@ class FeedbackIntegrationAgent:
             print(f"[_generate_learning_recommendations] Error: {e}")
             return ["Error generating recommendations"]
     
->>>>>>> 1191854 (agentic system)
     def get_training_examples(self, query: str, limit: int = 5) -> Dict[str, List[Dict]]:
         """Get relevant training examples for a query"""
         try:
@@ -759,34 +756,30 @@ class FeedbackIntegrationAgent:
             return {"positive_examples": [], "negative_examples": []}
 
 
-<<<<<<< HEAD
-=======
-def ensure_feedback_agent_ready(agent: FeedbackIntegrationAgent) -> bool:
-    """Ensure the feedback integration agent is ready for the workflow.
-    
+def ensure_feedback_agent_ready(agent: 'FeedbackIntegrationAgent') -> bool:
+    """
+    Ensure the feedback integration agent is ready for the workflow.
+
     Args:
         agent: FeedbackIntegrationAgent instance
-        
+
     Returns:
         True if feedback agent is ready, False otherwise
     """
     try:
         # Test the agent by getting learning insights
         insights = agent.get_learning_insights()
-        
+
         if insights and not insights.get("error"):
             print(f"[ensure_feedback_agent_ready] Feedback integration agent ready")
             return True
         else:
             print(f"[ensure_feedback_agent_ready] Feedback integration agent not responding properly")
             return False
-        
+
     except Exception as e:
         print(f"[ensure_feedback_agent_ready] Error: {e}")
         return False
-
-
->>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the FeedbackIntegrationAgent usage

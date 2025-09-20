@@ -369,8 +369,6 @@ class VectorSearchAgent:
             print(f"✗ Vector search failed: {e}")
             raise
     
-<<<<<<< HEAD
-=======
     def search_for_resolution_agent(self, 
                                   query: str, 
                                   k: int = 5,
@@ -427,8 +425,6 @@ class VectorSearchAgent:
             print(f"✗ Resolution-optimized search failed: {e}")
             # Fallback to regular search
             return self.vector_search(query, k, filter_metadata)
-    
->>>>>>> 1191854 (agentic system)
     def batch_vector_search(self, 
                           queries: List[str], 
                           k: int = 5) -> Dict[str, List[SearchResult]]:
@@ -630,180 +626,176 @@ class VectorSearchAgent:
             return {"error": str(e)}
 
 
-<<<<<<< HEAD
-=======
-def ensure_search_agent_ready(agent: VectorSearchAgent, 
-                             force_recreate: bool = False) -> bool:
-    """Ensure the search agent is ready for the workflow.
-    
-    Args:
-        agent: VectorSearchAgent instance
-        force_recreate: Whether to force recreate the vector store
-        
-    Returns:
-        True if search agent is ready, False otherwise
-    """
-    try:
-        # Create or connect to vector store
-        agent.create_vector_store(force_recreate=force_recreate)
-        
-        # Test search functionality
-        test_query = "test search functionality"
-        test_results = agent.vector_search(test_query, k=1)
-        
-        print(f"[ensure_search_agent_ready] Search agent ready with {len(test_results)} test results")
-        return True
-        
-    except Exception as e:
-        print(f"[ensure_search_agent_ready] Error: {e}")
-        return False
+    def ensure_search_agent_ready(agent: 'VectorSearchAgent', 
+                                force_recreate: bool = False) -> bool:
+        """
+        Ensure the search agent is ready for the workflow.
 
+        Args:
+            agent: VectorSearchAgent instance
+            force_recreate: Whether to force recreate the vector store
 
->>>>>>> 1191854 (agentic system)
-def main():
-    """
-    Main function demonstrating the VectorSearchAgent usage
-    """
-    try:
-        # Initialize the search agent
-        print("🚀 Initializing Vector Search Agent...")
-        agent = VectorSearchAgent()
-        
-        # Create vector store (force recreate to fix schema mismatch)
-        print("\n📊 Setting up vector store...")
-        agent.create_vector_store(force_recreate=True)
-        
-        # Load incident data from JSON file
-        print("\n📂 Loading incident data from JSON file...")
+        Returns:
+            True if search agent is ready, False otherwise
+        """
         try:
-            with open('incident_dataset.json', 'r') as f:
-                json_data = json.load(f)
+            # Create or connect to vector store
+            agent.create_vector_store(force_recreate=force_recreate)
+
+            # Test search functionality
+            test_query = "test search functionality"
+            test_results = agent.vector_search(test_query, k=1)
+
+            print(f"[ensure_search_agent_ready] Search agent ready with {len(test_results)} test results")
+            return True
+
+        except Exception as e:
+            print(f"[ensure_search_agent_ready] Error: {e}")
+            return False
+    def main():
+        """
+        Main function demonstrating the VectorSearchAgent usage
+        """
+        try:
+            # Initialize the search agent
+            print("🚀 Initializing Vector Search Agent...")
+            agent = VectorSearchAgent()
             
-            # Convert JSON data to LogData objects (limit to first 100 for demo)
-            sample_logs = []
-            for item in json_data[:100]:  # Limit to first 100 records for demo
-                # Parse datetime strings if they exist
-                created_at = None
-                updated_at = None
-                if item.get('created_at'):
-                    try:
-                        created_at = datetime.fromisoformat(item['created_at'].replace('Z', '+00:00'))
-                    except:
-                        created_at = datetime.now()
-                if item.get('updated_at'):
-                    try:
-                        updated_at = datetime.fromisoformat(item['updated_at'].replace('Z', '+00:00'))
-                    except:
-                        updated_at = datetime.now()
+            # Create vector store (force recreate to fix schema mismatch)
+            print("\n📊 Setting up vector store...")
+            agent.create_vector_store(force_recreate=True)
+            
+            # Load incident data from JSON file
+            print("\n📂 Loading incident data from JSON file...")
+            try:
+                with open('incident_dataset.json', 'r') as f:
+                    json_data = json.load(f)
                 
-                log_data = LogData(
-                    log_id=item.get('log_id', ''),
-                    title=item.get('title', ''),
-                    description=item.get('description', ''),
-                    source_type=item.get('source_type', 'log'),
-                    incident_id=item.get('incident_id'),
-                    service=item.get('service'),
-                    environment=item.get('environment'),
-                    cluster=item.get('cluster'),
-                    namespace=item.get('namespace'),
-                    pod=item.get('pod'),
-                    container=item.get('container'),
-                    file_path=item.get('file_path'),
-                    commit_sha=item.get('commit_sha'),
-                    tool=item.get('tool'),
-                    configs=item.get('configs'),
-                    docs_faq=item.get('docs_faq'),
-                    status=item.get('status'),
-                    resolution=item.get('resolution'),
-                    severity=item.get('severity'),
-                    category=item.get('category'),
-                    priority=item.get('priority'),
-                    tags=item.get('tags'),
-                    created_at=created_at,
-                    updated_at=updated_at
-                )
-                sample_logs.append(log_data)
+                # Convert JSON data to LogData objects (limit to first 100 for demo)
+                sample_logs = []
+                for item in json_data[:100]:  # Limit to first 100 records for demo
+                    # Parse datetime strings if they exist
+                    created_at = None
+                    updated_at = None
+                    if item.get('created_at'):
+                        try:
+                            created_at = datetime.fromisoformat(item['created_at'].replace('Z', '+00:00'))
+                        except:
+                            created_at = datetime.now()
+                    if item.get('updated_at'):
+                        try:
+                            updated_at = datetime.fromisoformat(item['updated_at'].replace('Z', '+00:00'))
+                        except:
+                            updated_at = datetime.now()
+                    
+                    log_data = LogData(
+                        log_id=item.get('log_id', ''),
+                        title=item.get('title', ''),
+                        description=item.get('description', ''),
+                        source_type=item.get('source_type', 'log'),
+                        incident_id=item.get('incident_id'),
+                        service=item.get('service'),
+                        environment=item.get('environment'),
+                        cluster=item.get('cluster'),
+                        namespace=item.get('namespace'),
+                        pod=item.get('pod'),
+                        container=item.get('container'),
+                        file_path=item.get('file_path'),
+                        commit_sha=item.get('commit_sha'),
+                        tool=item.get('tool'),
+                        configs=item.get('configs'),
+                        docs_faq=item.get('docs_faq'),
+                        status=item.get('status'),
+                        resolution=item.get('resolution'),
+                        severity=item.get('severity'),
+                        category=item.get('category'),
+                        priority=item.get('priority'),
+                        tags=item.get('tags'),
+                        created_at=created_at,
+                        updated_at=updated_at
+                    )
+                    sample_logs.append(log_data)
+                
+                print(f"✓ Loaded {len(sample_logs)} incident records from JSON file")
+                
+            except Exception as e:
+                print(f"✗ Failed to load JSON data: {e}")
+                print("Using fallback sample data...")
+                # Fallback to minimal sample data
+                sample_logs = [
+                    LogData(
+                        log_id="LOG-001",
+                        title="Login Issues - Authentication",
+                        description="Users cannot login; authentication error 401 returned",
+                        source_type="log",
+                        service="auth-service",
+                        environment="prod",
+                        cluster="gke-prod",
+                        namespace="auth",
+                        pod="auth-7f9c8",
+                        container="auth",
+                        severity="error",
+                        resolution="Reset user session token, invalidate caches",
+                        incident_id="INC-001",
+                        configs="AUTH_CLIENT_SECRET not set",
+                        docs_faq="Refer to auth troubleshooting guide",
+                        status="Resolved",
+                        created_at=datetime.now(),
+                        updated_at=datetime.now(),
+                        category="Authentication",
+                        priority="High",
+                        tags=["oauth", "401"]
+                    )
+                ]
             
-            print(f"✓ Loaded {len(sample_logs)} incident records from JSON file")
+            # Add logs to vector store
+            print("\n📝 Adding sample logs to vector store...")
+            agent.add_logs_to_vector_store(sample_logs)
+                                                
+            # Perform vector searches
+            print("\n🔍 Performing vector searches...")
+            
+            # Single query search
+            query1 = "login authentication problems"
+            results1 = agent.vector_search(query1, k=3)
+            
+            print(f"\n📋 Search Results for: '{query1}'")
+            print("=" * 50)
+            for i, result in enumerate(results1, 1):
+                print(f"\n{i}. Log ID: {result.log_id}")
+                print(f"   Content: {result.content}")
+                print(f"   Similarity Score: {result.similarity_score:.4f}")
+                print(f"   Priority: {result.metadata.get('priority', 'N/A')}")
+                print(f"   Status: {result.metadata.get('status', 'N/A')}")
+            
+            # Batch search
+            queries = [
+                "performance issues",
+                "password reset problems", 
+                "database connection errors"
+            ]
+            
+            print(f"\n📋 Batch Search Results")
+            print("=" * 50)
+            batch_results = agent.batch_vector_search(queries, k=2)
+            
+            for query, results in batch_results.items():
+                print(f"\n🔍 Query: '{query}'")
+                for i, result in enumerate(results, 1):
+                    print(f"  {i}. {result.log_id} (Score: {result.similarity_score:.4f})")
+            
+            # Analyze results
+            print(f"\n📊 Analysis of Search Results")
+            print("=" * 50)
+            analysis = agent.analyze_search_results(results1)
+            for key, value in analysis.items():
+                print(f"{key}: {value}")
+            
+            print("\n✅ Vector Search Agent demonstration completed successfully!")
             
         except Exception as e:
-            print(f"✗ Failed to load JSON data: {e}")
-            print("Using fallback sample data...")
-            # Fallback to minimal sample data
-            sample_logs = [
-                LogData(
-                    log_id="LOG-001",
-                    title="Login Issues - Authentication",
-                    description="Users cannot login; authentication error 401 returned",
-                    source_type="log",
-                    service="auth-service",
-                    environment="prod",
-                    cluster="gke-prod",
-                    namespace="auth",
-                    pod="auth-7f9c8",
-                    container="auth",
-                    severity="error",
-                    resolution="Reset user session token, invalidate caches",
-                    incident_id="INC-001",
-                    configs="AUTH_CLIENT_SECRET not set",
-                    docs_faq="Refer to auth troubleshooting guide",
-                    status="Resolved",
-                    created_at=datetime.now(),
-                    updated_at=datetime.now(),
-                    category="Authentication",
-                    priority="High",
-                    tags=["oauth", "401"]
-                )
-            ]
-        
-        # Add logs to vector store
-        print("\n📝 Adding sample logs to vector store...")
-        agent.add_logs_to_vector_store(sample_logs)
-                                            
-        # Perform vector searches
-        print("\n🔍 Performing vector searches...")
-        
-        # Single query search
-        query1 = "login authentication problems"
-        results1 = agent.vector_search(query1, k=3)
-        
-        print(f"\n📋 Search Results for: '{query1}'")
-        print("=" * 50)
-        for i, result in enumerate(results1, 1):
-            print(f"\n{i}. Log ID: {result.log_id}")
-            print(f"   Content: {result.content}")
-            print(f"   Similarity Score: {result.similarity_score:.4f}")
-            print(f"   Priority: {result.metadata.get('priority', 'N/A')}")
-            print(f"   Status: {result.metadata.get('status', 'N/A')}")
-        
-        # Batch search
-        queries = [
-            "performance issues",
-            "password reset problems", 
-            "database connection errors"
-        ]
-        
-        print(f"\n📋 Batch Search Results")
-        print("=" * 50)
-        batch_results = agent.batch_vector_search(queries, k=2)
-        
-        for query, results in batch_results.items():
-            print(f"\n🔍 Query: '{query}'")
-            for i, result in enumerate(results, 1):
-                print(f"  {i}. {result.log_id} (Score: {result.similarity_score:.4f})")
-        
-        # Analyze results
-        print(f"\n📊 Analysis of Search Results")
-        print("=" * 50)
-        analysis = agent.analyze_search_results(results1)
-        for key, value in analysis.items():
-            print(f"{key}: {value}")
-        
-        print("\n✅ Vector Search Agent demonstration completed successfully!")
-        
-    except Exception as e:
-        print(f"\n❌ Error in main execution: {e}")
-        raise
+            print(f"\n❌ Error in main execution: {e}")
+            raise
 
 
 if __name__ == "__main__":

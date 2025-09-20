@@ -210,77 +210,6 @@ Provide your response in this JSON format:
             print(f"✗ Failed to summarize solutions: {e}")
             return []
     
-<<<<<<< HEAD
-=======
-    def process_for_explainability_agent(self, 
-                                       search_results: List[SearchResult],
-                                       query: str = "") -> Dict[str, Any]:
-        """
-        Process search results and prepare data for explainability agent.
-        This method formats the data in a way that's optimized for explainability analysis.
-        
-        Args:
-            search_results: List of SearchResult objects from vector search
-            query: Original search query for context
-            
-        Returns:
-            Dictionary containing processed data for explainability agent
-        """
-        try:
-            if not search_results:
-                return {"error": "No search results provided"}
-            
-            # Generate recommendations first
-            recommendations = self.summarize_solutions(search_results, query)
-            
-            # Create action plan if complex enough
-            action_plan = self.create_action_plan(search_results, query)
-            
-            # Prepare explainability data
-            explainability_data = {
-                "query": query,
-                "search_results_count": len(search_results),
-                "recommendations_count": len(recommendations),
-                "has_action_plan": action_plan is not None,
-                "search_results": [
-                    {
-                        "log_id": result.log_id,
-                        "content": result.content,
-                        "similarity_score": result.similarity_score,
-                        "metadata": result.metadata,
-                        "has_resolution": bool(result.metadata.get('resolution') or 
-                                             'resolution' in result.content.lower() or
-                                             'fix' in result.content.lower())
-                    }
-                    for result in search_results
-                ],
-                "recommendations": [
-                    {
-                        "title": rec.title,
-                        "priority": rec.priority,
-                        "confidence_score": rec.confidence_score,
-                        "estimated_time": rec.estimated_time,
-                        "steps_count": len(rec.steps)
-                    }
-                    for rec in recommendations
-                ],
-                "action_plan": {
-                    "title": action_plan.title if action_plan else None,
-                    "description": action_plan.description if action_plan else None,
-                    "total_estimated_time": action_plan.total_estimated_time if action_plan else None,
-                    "steps_count": len(action_plan.steps) if action_plan else 0
-                } if action_plan else None,
-                "processing_timestamp": datetime.now().isoformat()
-            }
-            
-            print(f"✓ Prepared explainability data for {len(search_results)} search results")
-            return explainability_data
-            
-        except Exception as e:
-            print(f"✗ Failed to process for explainability agent: {e}")
-            return {"error": str(e)}
-    
->>>>>>> 1191854 (agentic system)
     def create_action_plan(self, 
                           search_results: List[SearchResult],
                           query: str = "",
@@ -450,35 +379,6 @@ Provide your response in this JSON format:
             return {"error": str(e)}
 
 
-<<<<<<< HEAD
-=======
-def ensure_resolution_agent_ready(agent: ResolutionAgent) -> bool:
-    """Ensure the resolution agent is ready for the workflow.
-    
-    Args:
-        agent: ResolutionAgent instance
-        
-    Returns:
-        True if resolution agent is ready, False otherwise
-    """
-    try:
-        # Test the agent with a simple query
-        test_prompt = "Test resolution agent functionality"
-        response = agent.llm.invoke([HumanMessage(content=test_prompt)])
-        
-        if response and response.content:
-            print(f"[ensure_resolution_agent_ready] Resolution agent ready")
-            return True
-        else:
-            print(f"[ensure_resolution_agent_ready] Resolution agent not responding")
-            return False
-        
-    except Exception as e:
-        print(f"[ensure_resolution_agent_ready] Error: {e}")
-        return False
-
-
->>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the ResolutionAgent usage
