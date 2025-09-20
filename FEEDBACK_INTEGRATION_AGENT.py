@@ -594,6 +594,138 @@ class FeedbackIntegrationAgent:
             print(f"✗ Failed to get learning insights: {e}")
             return {"error": str(e)}
     
+<<<<<<< HEAD
+=======
+    def process_from_multimodal_agent(self, 
+                                    multimodal_data: Dict[str, Any],
+                                    session_id: str,
+                                    user_id: str = "system") -> Dict[str, Any]:
+        """
+        Process data from multimodal agent and prepare for orchestrator.
+        This method takes the output from the multimodal agent and prepares it for orchestrator consumption.
+        
+        Args:
+            multimodal_data: Data from multimodal agent (from prepare_for_feedback_agent)
+            session_id: Session ID for tracking
+            user_id: ID of the user
+            
+        Returns:
+            Dictionary containing processed data for orchestrator
+        """
+        try:
+            if "error" in multimodal_data:
+                print(f"[process_from_multimodal_agent] Error in multimodal data: {multimodal_data['error']}")
+                return {"error": multimodal_data['error'], "orchestrator_ready": False}
+            
+            # Process multimodal data for orchestrator
+            orchestrator_data = {
+                "session_id": session_id,
+                "user_id": user_id,
+                "multimodal_results_count": multimodal_data.get("multimodal_results_count", 0),
+                "content_types": multimodal_data.get("content_types", []),
+                "average_confidence": multimodal_data.get("average_confidence", 0.0),
+                "results_summary": multimodal_data.get("results_summary", []),
+                "explainability_context": multimodal_data.get("explainability_context", {}),
+                "feedback_collected": False,  # Will be set to True when user provides feedback
+                "learning_insights": self.get_learning_insights(),
+                "orchestrator_ready": True,
+                "processing_timestamp": datetime.now().isoformat()
+            }
+            
+            print(f"[process_from_multimodal_agent] Prepared orchestrator data for session {session_id}")
+            return orchestrator_data
+            
+        except Exception as e:
+            print(f"[process_from_multimodal_agent] Error: {e}")
+            return {"error": str(e), "orchestrator_ready": False}
+    
+    def get_workflow_learning_summary(self) -> Dict[str, Any]:
+        """
+        Get a comprehensive learning summary for the orchestrator.
+        This method provides insights about the learning progress across the entire workflow.
+        
+        Returns:
+            Dictionary containing comprehensive learning summary
+        """
+        try:
+            insights = self.get_learning_insights()
+            
+            # Get recent feedback patterns
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT feedback_type, COUNT(*) as count
+                FROM feedback
+                WHERE timestamp >= datetime('now', '-7 days')
+                GROUP BY feedback_type
+                ORDER BY count DESC
+            """)
+            
+            recent_feedback_patterns = dict(cursor.fetchall())
+            
+            # Get learning metrics trends
+            cursor.execute("""
+                SELECT metric_name, metric_value, timestamp
+                FROM learning_metrics
+                WHERE timestamp >= datetime('now', '-7 days')
+                ORDER BY timestamp DESC
+                LIMIT 50
+            """)
+            
+            learning_trends = cursor.fetchall()
+            
+            # Calculate system health score
+            health_score = 0.0
+            if insights.get("total_feedback", 0) > 0:
+                accuracy = insights.get("accuracy", 0.0)
+                health_score = accuracy * 100  # Convert to percentage
+            
+            workflow_summary = {
+                "learning_insights": insights,
+                "recent_feedback_patterns": recent_feedback_patterns,
+                "learning_trends": learning_trends,
+                "system_health_score": health_score,
+                "recommendations": self._generate_learning_recommendations(insights),
+                "orchestrator_summary": True,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            print(f"[get_workflow_learning_summary] Generated comprehensive learning summary")
+            return workflow_summary
+            
+        except Exception as e:
+            print(f"[get_workflow_learning_summary] Error: {e}")
+            return {"error": str(e), "orchestrator_summary": False}
+    
+    def _generate_learning_recommendations(self, insights: Dict[str, Any]) -> List[str]:
+        """Generate learning recommendations based on insights"""
+        recommendations = []
+        
+        try:
+            total_feedback = insights.get("total_feedback", 0)
+            accuracy = insights.get("accuracy", 0.0)
+            
+            if total_feedback < 10:
+                recommendations.append("Collect more user feedback to improve learning accuracy")
+            
+            if accuracy < 0.7:
+                recommendations.append("Consider adjusting embedding weights or ranking algorithms")
+            
+            if insights.get("embedding_improvements", 0) < 5:
+                recommendations.append("Increase embedding weight updates for better search relevance")
+            
+            if insights.get("ranking_improvements", 0) < 3:
+                recommendations.append("Focus on improving resolution ranking logic")
+            
+            if not recommendations:
+                recommendations.append("System learning is performing well - continue monitoring")
+            
+            return recommendations
+            
+        except Exception as e:
+            print(f"[_generate_learning_recommendations] Error: {e}")
+            return ["Error generating recommendations"]
+    
+>>>>>>> 1191854 (agentic system)
     def get_training_examples(self, query: str, limit: int = 5) -> Dict[str, List[Dict]]:
         """Get relevant training examples for a query"""
         try:
@@ -627,6 +759,34 @@ class FeedbackIntegrationAgent:
             return {"positive_examples": [], "negative_examples": []}
 
 
+<<<<<<< HEAD
+=======
+def ensure_feedback_agent_ready(agent: FeedbackIntegrationAgent) -> bool:
+    """Ensure the feedback integration agent is ready for the workflow.
+    
+    Args:
+        agent: FeedbackIntegrationAgent instance
+        
+    Returns:
+        True if feedback agent is ready, False otherwise
+    """
+    try:
+        # Test the agent by getting learning insights
+        insights = agent.get_learning_insights()
+        
+        if insights and not insights.get("error"):
+            print(f"[ensure_feedback_agent_ready] Feedback integration agent ready")
+            return True
+        else:
+            print(f"[ensure_feedback_agent_ready] Feedback integration agent not responding properly")
+            return False
+        
+    except Exception as e:
+        print(f"[ensure_feedback_agent_ready] Error: {e}")
+        return False
+
+
+>>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the FeedbackIntegrationAgent usage

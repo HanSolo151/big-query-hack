@@ -811,6 +811,185 @@ class ProactiveAgent:
         """Get all active clusters"""
         return list(self.active_clusters.values())
     
+<<<<<<< HEAD
+=======
+    def get_workflow_status(self) -> Dict[str, Any]:
+        """
+        Get comprehensive status for the orchestrator.
+        This method provides a complete status overview for the proactive agent.
+        
+        Returns:
+            Dictionary containing comprehensive status information
+        """
+        try:
+            status = {
+                "monitoring_active": self.monitoring_active,
+                "active_clusters_count": len(self.active_clusters),
+                "emerging_issues_count": len(self.emerging_issues),
+                "active_alerts_count": len(self.active_alerts),
+                "last_scan_time": self.last_scan_time.isoformat(),
+                "scan_interval": self.scan_interval,
+                "alert_thresholds": self.alert_thresholds,
+                "clusters": [
+                    {
+                        "cluster_id": cluster.cluster_id,
+                        "cluster_size": cluster.cluster_size,
+                        "avg_similarity": cluster.avg_similarity,
+                        "common_patterns": cluster.common_patterns,
+                        "severity_distribution": cluster.severity_distribution,
+                        "service_distribution": cluster.service_distribution,
+                        "created_at": cluster.created_at.isoformat()
+                    }
+                    for cluster in self.active_clusters.values()
+                ],
+                "emerging_issues": [
+                    {
+                        "issue_id": issue.issue_id,
+                        "title": issue.title,
+                        "severity": issue.severity,
+                        "confidence_score": issue.confidence_score,
+                        "ticket_count": issue.ticket_count,
+                        "growth_rate": issue.growth_rate,
+                        "affected_services": issue.affected_services,
+                        "first_detected": issue.first_detected.isoformat()
+                    }
+                    for issue in self.emerging_issues.values()
+                ],
+                "alerts": [
+                    {
+                        "alert_id": alert.alert_id,
+                        "alert_type": alert.alert_type,
+                        "title": alert.title,
+                        "severity": alert.severity,
+                        "confidence": alert.confidence,
+                        "acknowledged": alert.acknowledged,
+                        "resolved": alert.resolved,
+                        "created_at": alert.created_at.isoformat()
+                    }
+                    for alert in self.active_alerts.values()
+                ],
+                "workflow_ready": True,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            print(f"[get_workflow_status] Generated comprehensive status for orchestrator")
+            return status
+            
+        except Exception as e:
+            print(f"[get_workflow_status] Error: {e}")
+            return {"error": str(e), "workflow_ready": False}
+    
+    def integrate_with_orchestrator(self, orchestrator_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Integrate proactive agent data with orchestrator.
+        This method processes orchestrator data and provides proactive insights.
+        
+        Args:
+            orchestrator_data: Data from orchestrator
+            
+        Returns:
+            Dictionary containing integrated proactive insights
+        """
+        try:
+            # Extract relevant information from orchestrator data
+            session_id = orchestrator_data.get("session_id", "unknown")
+            query = orchestrator_data.get("query", "unknown")
+            
+            # Check if current query matches any active clusters or emerging issues
+            matching_clusters = []
+            matching_issues = []
+            matching_alerts = []
+            
+            for cluster in self.active_clusters.values():
+                # Simple matching logic - could be enhanced with semantic similarity
+                if any(keyword in query.lower() for keyword in cluster.common_patterns):
+                    matching_clusters.append(cluster)
+            
+            for issue in self.emerging_issues.values():
+                if any(keyword in query.lower() for keyword in issue.title.lower().split()):
+                    matching_issues.append(issue)
+            
+            for alert in self.active_alerts.values():
+                if any(keyword in query.lower() for keyword in alert.title.lower().split()):
+                    matching_alerts.append(alert)
+            
+            # Generate proactive insights
+            proactive_insights = {
+                "session_id": session_id,
+                "query": query,
+                "matching_clusters": [
+                    {
+                        "cluster_id": cluster.cluster_id,
+                        "cluster_size": cluster.cluster_size,
+                        "common_patterns": cluster.common_patterns,
+                        "severity_distribution": cluster.severity_distribution
+                    }
+                    for cluster in matching_clusters
+                ],
+                "matching_issues": [
+                    {
+                        "issue_id": issue.issue_id,
+                        "title": issue.title,
+                        "severity": issue.severity,
+                        "confidence_score": issue.confidence_score,
+                        "growth_rate": issue.growth_rate
+                    }
+                    for issue in matching_issues
+                ],
+                "matching_alerts": [
+                    {
+                        "alert_id": alert.alert_id,
+                        "title": alert.title,
+                        "severity": alert.severity,
+                        "confidence": alert.confidence
+                    }
+                    for alert in matching_alerts
+                ],
+                "proactive_recommendations": self._generate_proactive_recommendations(
+                    matching_clusters, matching_issues, matching_alerts
+                ),
+                "orchestrator_integrated": True,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            print(f"[integrate_with_orchestrator] Generated proactive insights for session {session_id}")
+            return proactive_insights
+            
+        except Exception as e:
+            print(f"[integrate_with_orchestrator] Error: {e}")
+            return {"error": str(e), "orchestrator_integrated": False}
+    
+    def _generate_proactive_recommendations(self, 
+                                          clusters: List[TicketCluster],
+                                          issues: List[EmergingIssue],
+                                          alerts: List[ProactiveAlert]) -> List[str]:
+        """Generate proactive recommendations based on current state"""
+        recommendations = []
+        
+        try:
+            if clusters:
+                recommendations.append(f"Found {len(clusters)} related clusters - consider investigating patterns")
+            
+            if issues:
+                high_severity_issues = [i for i in issues if i.severity in ["High", "Critical"]]
+                if high_severity_issues:
+                    recommendations.append(f"⚠️ {len(high_severity_issues)} high-severity emerging issues detected")
+            
+            if alerts:
+                unacknowledged_alerts = [a for a in alerts if not a.acknowledged]
+                if unacknowledged_alerts:
+                    recommendations.append(f"🚨 {len(unacknowledged_alerts)} unacknowledged alerts require attention")
+            
+            if not recommendations:
+                recommendations.append("No immediate proactive concerns detected")
+            
+            return recommendations
+            
+        except Exception as e:
+            print(f"[_generate_proactive_recommendations] Error: {e}")
+            return ["Error generating proactive recommendations"]
+    
+>>>>>>> 1191854 (agentic system)
     def acknowledge_alert(self, alert_id: str) -> bool:
         """Acknowledge an alert"""
         try:
@@ -852,6 +1031,34 @@ class ProactiveAgent:
             return False
 
 
+<<<<<<< HEAD
+=======
+def ensure_proactive_agent_ready(agent: ProactiveAgent) -> bool:
+    """Ensure the proactive agent is ready for the workflow.
+    
+    Args:
+        agent: ProactiveAgent instance
+        
+    Returns:
+        True if proactive agent is ready, False otherwise
+    """
+    try:
+        # Test the agent by getting workflow status
+        status = agent.get_workflow_status()
+        
+        if status and not status.get("error"):
+            print(f"[ensure_proactive_agent_ready] Proactive agent ready")
+            return True
+        else:
+            print(f"[ensure_proactive_agent_ready] Proactive agent not responding properly")
+            return False
+        
+    except Exception as e:
+        print(f"[ensure_proactive_agent_ready] Error: {e}")
+        return False
+
+
+>>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the ProactiveAgent usage

@@ -369,6 +369,66 @@ class VectorSearchAgent:
             print(f"✗ Vector search failed: {e}")
             raise
     
+<<<<<<< HEAD
+=======
+    def search_for_resolution_agent(self, 
+                                  query: str, 
+                                  k: int = 5,
+                                  filter_metadata: Optional[Dict[str, Any]] = None) -> List[SearchResult]:
+        """
+        Search specifically optimized for resolution agent input.
+        Focuses on finding incidents with resolutions and high-quality metadata.
+        
+        Args:
+            query: Search query string
+            k: Number of top results to return
+            filter_metadata: Optional metadata filters
+            
+        Returns:
+            List of SearchResult objects optimized for resolution generation
+        """
+        try:
+            # First, try to find incidents with resolutions
+            resolution_results = self.vector_search(
+                query=query,
+                k=k*2,  # Get more results to filter
+                filter_metadata=filter_metadata
+            )
+            
+            # Filter and prioritize results with resolutions
+            prioritized_results = []
+            resolution_results_only = []
+            
+            for result in resolution_results:
+                # Check if this result has resolution information
+                has_resolution = (
+                    result.metadata.get('resolution') or 
+                    result.metadata.get('has_resolution') or
+                    'resolution' in result.content.lower() or
+                    'fix' in result.content.lower() or
+                    'solution' in result.content.lower()
+                )
+                
+                if has_resolution:
+                    resolution_results_only.append(result)
+                else:
+                    prioritized_results.append(result)
+            
+            # Combine: resolution results first, then others
+            final_results = resolution_results_only + prioritized_results
+            
+            # Limit to requested number
+            final_results = final_results[:k]
+            
+            print(f"✓ Found {len(resolution_results_only)} results with resolutions out of {len(final_results)} total")
+            return final_results
+            
+        except Exception as e:
+            print(f"✗ Resolution-optimized search failed: {e}")
+            # Fallback to regular search
+            return self.vector_search(query, k, filter_metadata)
+    
+>>>>>>> 1191854 (agentic system)
     def batch_vector_search(self, 
                           queries: List[str], 
                           k: int = 5) -> Dict[str, List[SearchResult]]:
@@ -570,6 +630,36 @@ class VectorSearchAgent:
             return {"error": str(e)}
 
 
+<<<<<<< HEAD
+=======
+def ensure_search_agent_ready(agent: VectorSearchAgent, 
+                             force_recreate: bool = False) -> bool:
+    """Ensure the search agent is ready for the workflow.
+    
+    Args:
+        agent: VectorSearchAgent instance
+        force_recreate: Whether to force recreate the vector store
+        
+    Returns:
+        True if search agent is ready, False otherwise
+    """
+    try:
+        # Create or connect to vector store
+        agent.create_vector_store(force_recreate=force_recreate)
+        
+        # Test search functionality
+        test_query = "test search functionality"
+        test_results = agent.vector_search(test_query, k=1)
+        
+        print(f"[ensure_search_agent_ready] Search agent ready with {len(test_results)} test results")
+        return True
+        
+    except Exception as e:
+        print(f"[ensure_search_agent_ready] Error: {e}")
+        return False
+
+
+>>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the VectorSearchAgent usage
