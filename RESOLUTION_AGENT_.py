@@ -1,7 +1,6 @@
-"""
-Resolution Agent - Uses Gemini to generate actionable recommendations and action plans
-Summarizes retrieved solutions and produces concise, actionable recommendations
-"""
+"""Resolution Agent - Uses Gemini to generate actionable recommendations and action plans
+Summarizes retrieved solutions and produces concise, actionable recommendations"""
+
 
 import os
 import json
@@ -56,7 +55,7 @@ class ResolutionAgent:
         Initialize the ResolutionAgent
                                                                          
         Args:
-            api_key_path: Path to Gemini API key
+            api_key_path: Path to Gemini API key file (used if env var not set)
             model_name: Gemini model to use
         """
         self.api_key_path = api_key_path
@@ -71,15 +70,24 @@ class ResolutionAgent:
     def _setup_gemini(self):
         """Set up Gemini text generator"""
         try:
-            # Read API key
-            with open(self.api_key_path, 'r') as f:
-                api_key = f.read().strip()
+            # First try environment variable
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
             
-            # Initialize Gemini
+            # Fallback to file if env var not set
+            if not api_key:
+                if not os.path.exists(self.api_key_path):
+                    raise FileNotFoundError(
+                        f"No API key found. Either set GOOGLE_GEMINI_API_KEY "
+                        f"or create {self.api_key_path}"
+                    )
+                with open(self.api_key_path, "r") as f:
+                    api_key = f.read().strip()
+            
+            # Initialize Gemini LLM
             self.llm = ChatGoogleGenerativeAI(
                 model=self.model_name,
                 google_api_key=api_key,
-                temperature=0.3,  # Lower temperature for more consistent outputs
+                temperature=0.3,  # Lower temperature = more consistent outputs
                 max_output_tokens=2048
             )
             
@@ -88,7 +96,7 @@ class ResolutionAgent:
         except Exception as e:
             print(f"✗ Resolution Agent setup failed: {e}")
             raise
-    
+            
     def _setup_prompts(self):
         """Set up prompt templates for different resolution tasks"""
         
@@ -210,8 +218,6 @@ Provide your response in this JSON format:
             print(f"✗ Failed to summarize solutions: {e}")
             return []
     
-<<<<<<< HEAD
-=======
     def process_for_explainability_agent(self, 
                                        search_results: List[SearchResult],
                                        query: str = "") -> Dict[str, Any]:
@@ -280,7 +286,6 @@ Provide your response in this JSON format:
             print(f"✗ Failed to process for explainability agent: {e}")
             return {"error": str(e)}
     
->>>>>>> 1191854 (agentic system)
     def create_action_plan(self, 
                           search_results: List[SearchResult],
                           query: str = "",
@@ -450,8 +455,6 @@ Provide your response in this JSON format:
             return {"error": str(e)}
 
 
-<<<<<<< HEAD
-=======
 def ensure_resolution_agent_ready(agent: ResolutionAgent) -> bool:
     """Ensure the resolution agent is ready for the workflow.
     
@@ -478,7 +481,6 @@ def ensure_resolution_agent_ready(agent: ResolutionAgent) -> bool:
         return False
 
 
->>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the ResolutionAgent usage

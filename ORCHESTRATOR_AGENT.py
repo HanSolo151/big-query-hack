@@ -68,7 +68,7 @@ class OrchestratorAgent:
     
     def __init__(self, 
                  project_id: str = "big-station-472112-i1",
-                 credentials_path: str = "big-station-472112-i1-01b16573569e.json",
+                 credentials_path: str = "big-station-472112-i1-6167d1224f9b.json",
                  api_key_path: str = "Gemini_API_Key.txt"):
         """
         Initialize the Orchestrator Agent

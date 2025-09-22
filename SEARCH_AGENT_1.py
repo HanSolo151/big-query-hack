@@ -7,16 +7,13 @@ import os
 import json
 import pandas as pd
 from typing import List, Dict, Any, Optional, Literal, Union
-from dataclasses import dataclass 
- 
-
+from dataclasses import dataclass
 from datetime import datetime
 
 # LangChain imports
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 from langchain.schema import Document
-from langchain_google_community import BigQueryVectorStore
+from langchain_google_community.bq_storage_vectorstores.bigquery import BigQueryVectorStore
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Google Cloud and BigFrames imports
@@ -39,34 +36,31 @@ class SearchResult:
     metadata: Dict[str, Any]
     related_context: Optional[Dict[str, Any]] = None
 
+
 @dataclass
 class LogData:
     log_id: str
     title: str
     description: str
-    # What artifact this is: log lines, config text, documentation, or incident report
     source_type: Literal["log", "config", "doc", "incident"] = "log"
-    # Optional linking/context
     incident_id: Optional[str] = None
     service: Optional[str] = None
-    environment: Optional[str] = None  # dev, staging, prod
+    environment: Optional[str] = None
     cluster: Optional[str] = None
     namespace: Optional[str] = None
     pod: Optional[str] = None
     container: Optional[str] = None
-    file_path: Optional[str] = None  # for configs/docs
-    commit_sha: Optional[str] = None  # CI/CD association
-    tool: Optional[str] = None  # e.g., github-actions, argo, jenkins
-    # Domain content
+    file_path: Optional[str] = None
+    commit_sha: Optional[str] = None
+    tool: Optional[str] = None
     configs: Optional[str] = None
     docs_faq: Optional[str] = None
     status: Optional[str] = None
     resolution: Optional[str] = None
-    severity: Optional[str] = None  # info, warn, error, critical
-    category: Optional[str] = None  # Authentication, Database, etc.
-    priority: Optional[str] = None  # Low/Medium/High/Critical
+    severity: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
     tags: Optional[List[str]] = None
-    # Timestamps
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -75,171 +69,149 @@ class VectorSearchAgent:
     """
     Search Agent that performs vector search on tickets using LangChain and BigFrames
     """
-    
-    def __init__(self, 
-                 project_id: str = "big-station-472112-i1",
-                 credentials_path: str = "big-station-472112-i1-01b16573569e.json",
-                 api_key_path: str = "Gemini_API_Key.txt"):
+
+    def __init__(
+        self,
+        project_id: str = "big-station-472112-i1",
+        credentials_path: Optional[str] = None,
+        api_key_path: str = "Gemini_API_Key.txt",
+    ):
         """
         Initialize the VectorSearchAgent
-        
+
         Args:
             project_id: Google Cloud project ID
-            credentials_path: Path to service account credentials
+            credentials_path: Path to service account credentials (optional)
             api_key_path: Path to Gemini API key
         """
         self.project_id = project_id
-        self.credentials_path = credentials_path
         self.api_key_path = api_key_path
-        
+
+        # Prefer explicit path → env var → error
+        env_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if credentials_path is not None:
+            self.credentials_path = credentials_path
+        elif env_creds:
+            self.credentials_path = env_creds
+        else:
+            raise RuntimeError(
+                "No credentials file provided and GOOGLE_APPLICATION_CREDENTIALS not set."
+            )
+
         # Initialize components
         self._setup_authentication()
         self._setup_embeddings()
         self._setup_bigframes()
         self._setup_bigquery()
-        
-        # Initialize vector store
+
         self.vector_store = None
-        # Text splitter for larger artifacts (configs/docs/incidents)
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=150,
-            separators=["\n\n", "\n", ". ", ".", " "]
+            separators=["\n\n", "\n", ". ", ".", " "],
         )
+    
+    def _artifact_to_text(self, artifact):
+        return artifact.get("content", "")
 
-    def _artifact_to_text(self, item: Union[LogData, Dict[str, Any]]) -> str:
-        """Build a unified textual representation for embeddings from log/config/doc/incident."""
-        if isinstance(item, dict):
-            data = item
-        else:
-            data = item.__dict__
-        parts: List[str] = []
-        title = data.get("title")
-        description = data.get("description")
-        configs = data.get("configs")
-        docs_faq = data.get("docs_faq")
-        source_type = data.get("source_type", "log")
-        if title:
-            parts.append(f"Title: {title}")
-        if source_type:
-            parts.append(f"Type: {source_type}")
-        if description:
-            parts.append(f"Description: {description}")
-        if configs:
-            parts.append(f"Config:\n{configs}")
-        if docs_faq:
-            parts.append(f"Docs/FAQ:\n{docs_faq}")
-        # Include light-weight metadata signals
-        meta_keys = ["service", "environment", "cluster", "namespace", "pod", "container", "incident_id", "commit_sha", "tool", "severity", "category", "priority"]
-        meta_kv = [f"{k}: {data.get(k)}" for k in meta_keys if data.get(k)]
-        if meta_kv:
-            parts.append("Context:\n" + "\n".join(meta_kv))
-        return "\n\n".join(parts).strip()
 
-    def _artifact_to_metadata(self, item: Union[LogData, Dict[str, Any]]) -> Dict[str, Any]:
-        """Normalize metadata for storage in vector DB - using minimal fields to match existing schema."""
-        if isinstance(item, dict):
-            data = item
-        else:
-            data = item.__dict__
-        
-        # Use only basic fields that are likely to exist in the table
-        metadata: Dict[str, Any] = {
-            "log_id": data.get("log_id", ""),
-            "priority": data.get("priority", "Low"),
-            "status": data.get("status", "open"),
-        }
-        
-        # Handle timestamps
-        created_at = data.get("created_at")
-        if isinstance(created_at, datetime):
-            metadata["created_at"] = created_at.isoformat()
-        elif created_at:
-            metadata["created_at"] = str(created_at)
-        else:
-            metadata["created_at"] = datetime.now().isoformat()
-            
-        return {k: v for k, v in metadata.items() if v is not None}
+    def _artifact_to_metadata(self, artifact) -> dict:
+        """
+        Return only allowed fields, no doc_id.
+        """
+        return {
+            "log_id": artifact.get("log_id"),
+            "service": artifact.get("metadata", {}).get("service"),
+            "environment": artifact.get("metadata", {}).get("environment"),
+            "cluster": artifact.get("metadata", {}).get("cluster"),
+            "namespace": artifact.get("metadata", {}).get("namespace"),
+            "pod": artifact.get("metadata", {}).get("pod"),
+            "container": artifact.get("metadata", {}).get("container"),
+            "status": artifact.get("metadata", {}).get("status"),
+            "priority": artifact.get("metadata", {}).get("priority"),
+            "severity": artifact.get("metadata", {}).get("severity"),
+            "category": artifact.get("metadata", {}).get("category"),
+            "source_type": artifact.get("metadata", {}).get("source_type"),
+            "tool": artifact.get("metadata", {}).get("tool"),
+            "commit_sha": artifact.get("metadata", {}).get("commit_sha"),
+            "file_path": artifact.get("metadata", {}).get("file_path"),
+            "incident_id": artifact.get("metadata", {}).get("incident_id"),
+            #"tags": artifact.get("metadata", {}).get("tags"),
+            "created_at": artifact.get("metadata", {}).get("created_at"),
+            "updated_at": artifact.get("metadata", {}).get("updated_at"),
+    }
+
         
     def _setup_authentication(self):
         """Set up Google Cloud authentication"""
         try:
-            # Set up service account credentials
             self.credentials = service_account.Credentials.from_service_account_file(
                 self.credentials_path
             )
-            
-            # Set environment variable for BigFrames
-            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.credentials_path
-            
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.credentials_path
             print("✓ Authentication configured successfully")
-            
         except Exception as e:
             print(f"✗ Authentication setup failed: {e}")
             raise
-    
+
     def _setup_embeddings(self):
         """Set up Gemini embeddings model"""
         try:
-            # Read API key
-            with open(self.api_key_path, 'r') as f:
-                api_key = f.read().strip()
-            
+            # Prefer environment variable
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+            if not api_key:
+                # Fallback: read from file if env var not set
+                with open(self.api_key_path, "r") as f:
+                    api_key = f.read().strip()
+
             # Configure Gemini
             genai.configure(api_key=api_key)
-            
+
             # Initialize embeddings
             self.embeddings = GoogleGenerativeAIEmbeddings(
                 model="models/embedding-001",
-                google_api_key=api_key
+                google_api_key=api_key,
             )
-            
+
             print("✓ Embeddings model configured successfully")
-            
+
         except Exception as e:
             print(f"✗ Embeddings setup failed: {e}")
             raise
-    
+
     def _setup_bigframes(self):
-        """Set up BigFrames session if available; otherwise fall back to BigQuery client."""
+        """Set up BigFrames session if available"""
         try:
-            # Prefer modern import path if present
             try:
                 import bigframes.pandas as bpd  # type: ignore
-                # Some versions expose connect under top-level, others under pandas
                 if hasattr(bpd, "connect"):
                     self.bigframes_session = bpd.connect(
-                        project_id=self.project_id,
-                        credentials=self.credentials
+                        project_id=self.project_id, credentials=self.credentials
                     )
                 else:
                     self.bigframes_session = None
             except Exception:
-                # Fallback: not available
                 self.bigframes_session = None
 
             if self.bigframes_session is not None:
                 print("✓ BigFrames session configured successfully")
             else:
                 print("! BigFrames not available; will use BigQuery client for data access")
-
         except Exception as e:
             print(f"! BigFrames setup encountered an issue, using BigQuery client instead: {e}")
             self.bigframes_session = None
-    
+
     def _setup_bigquery(self):
         """Set up BigQuery client"""
         try:
             self.bq_client = bigquery.Client(
-                project=self.project_id,
-                credentials=self.credentials
+                project=self.project_id, credentials=self.credentials
             )
-            
             print("✓ BigQuery client configured successfully")
-            
         except Exception as e:
             print(f"✗ BigQuery setup failed: {e}")
             raise
+
     
     def create_vector_store(self, 
                            dataset_id: str = "log_dataset",
@@ -369,66 +341,6 @@ class VectorSearchAgent:
             print(f"✗ Vector search failed: {e}")
             raise
     
-<<<<<<< HEAD
-=======
-    def search_for_resolution_agent(self, 
-                                  query: str, 
-                                  k: int = 5,
-                                  filter_metadata: Optional[Dict[str, Any]] = None) -> List[SearchResult]:
-        """
-        Search specifically optimized for resolution agent input.
-        Focuses on finding incidents with resolutions and high-quality metadata.
-        
-        Args:
-            query: Search query string
-            k: Number of top results to return
-            filter_metadata: Optional metadata filters
-            
-        Returns:
-            List of SearchResult objects optimized for resolution generation
-        """
-        try:
-            # First, try to find incidents with resolutions
-            resolution_results = self.vector_search(
-                query=query,
-                k=k*2,  # Get more results to filter
-                filter_metadata=filter_metadata
-            )
-            
-            # Filter and prioritize results with resolutions
-            prioritized_results = []
-            resolution_results_only = []
-            
-            for result in resolution_results:
-                # Check if this result has resolution information
-                has_resolution = (
-                    result.metadata.get('resolution') or 
-                    result.metadata.get('has_resolution') or
-                    'resolution' in result.content.lower() or
-                    'fix' in result.content.lower() or
-                    'solution' in result.content.lower()
-                )
-                
-                if has_resolution:
-                    resolution_results_only.append(result)
-                else:
-                    prioritized_results.append(result)
-            
-            # Combine: resolution results first, then others
-            final_results = resolution_results_only + prioritized_results
-            
-            # Limit to requested number
-            final_results = final_results[:k]
-            
-            print(f"✓ Found {len(resolution_results_only)} results with resolutions out of {len(final_results)} total")
-            return final_results
-            
-        except Exception as e:
-            print(f"✗ Resolution-optimized search failed: {e}")
-            # Fallback to regular search
-            return self.vector_search(query, k, filter_metadata)
-    
->>>>>>> 1191854 (agentic system)
     def batch_vector_search(self, 
                           queries: List[str], 
                           k: int = 5) -> Dict[str, List[SearchResult]]:
@@ -630,36 +542,6 @@ class VectorSearchAgent:
             return {"error": str(e)}
 
 
-<<<<<<< HEAD
-=======
-def ensure_search_agent_ready(agent: VectorSearchAgent, 
-                             force_recreate: bool = False) -> bool:
-    """Ensure the search agent is ready for the workflow.
-    
-    Args:
-        agent: VectorSearchAgent instance
-        force_recreate: Whether to force recreate the vector store
-        
-    Returns:
-        True if search agent is ready, False otherwise
-    """
-    try:
-        # Create or connect to vector store
-        agent.create_vector_store(force_recreate=force_recreate)
-        
-        # Test search functionality
-        test_query = "test search functionality"
-        test_results = agent.vector_search(test_query, k=1)
-        
-        print(f"[ensure_search_agent_ready] Search agent ready with {len(test_results)} test results")
-        return True
-        
-    except Exception as e:
-        print(f"[ensure_search_agent_ready] Error: {e}")
-        return False
-
-
->>>>>>> 1191854 (agentic system)
 def main():
     """
     Main function demonstrating the VectorSearchAgent usage
